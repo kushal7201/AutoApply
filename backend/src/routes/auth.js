@@ -4,7 +4,7 @@ import {
   register,
   login,
   logout,
-  refreshToken,
+  refresh,
   getMe,
   forgotPassword,
   resetPassword
@@ -18,10 +18,9 @@ const router = express.Router();
 // @desc    Register user
 // @access  Public
 router.post('/register', [
-  body('firstName').trim().isLength({ min: 1 }).withMessage('First name is required'),
-  body('lastName').trim().isLength({ min: 1 }).withMessage('Last name is required'),
+  body('name').trim().isLength({ min: 1 }).withMessage('Name is required'),
   body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
   validate
 ], register);
 
@@ -42,7 +41,7 @@ router.post('/logout', auth, logout);
 // @route   POST /api/auth/refresh
 // @desc    Refresh access token
 // @access  Public
-router.post('/refresh', refreshToken);
+router.post('/refresh', refresh);
 
 // @route   GET /api/auth/me
 // @desc    Get current user
@@ -61,7 +60,7 @@ router.post('/forgot-password', [
 // @desc    Reset password
 // @access  Public
 router.post('/reset-password/:token', [
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
   validate
 ], resetPassword);
 

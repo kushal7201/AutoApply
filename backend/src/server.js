@@ -8,6 +8,9 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
 import connectDB from './config/database.js';
+import redisService from './services/redis.js';
+import rabbitMQService from './services/rabbitmq.js';
+import cloudinaryService from './services/cloudinary.js';
 import logger from './utils/logger.js';
 import errorHandler from './middleware/errorHandler.js';
 
@@ -23,8 +26,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Connect to database
+// Connect to database and services
 connectDB();
+
+// Initialize Redis
+redisService.connect().catch(err => {
+  logger.error('Redis connection failed:', err.message);
+});
+
+// Initialize RabbitMQ
+rabbitMQService.connect().catch(err => {
+  logger.error('RabbitMQ connection failed:', err.message);
+});
+
+// Cloudinary is auto-configured in the service
 
 // Security middleware
 app.use(helmet());
@@ -67,13 +82,35 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV
-  });
+app.get('/health', async (req, res) => {
+  try {
+    // Check all service statuses
+    const [redisHealth, rabbitHealth, cloudinaryHealth] = await Promise.all([
+      redisService.healthCheck(),
+      rabbitMQService.healthCheck(),
+      cloudinaryService.healthCheck()
+    ]);
+
+    res.status(200).json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV,
+      services: {
+        database: 'Connected', // MongoDB status would be checked here
+        redis: redisHealth,
+        rabbitmq: rabbitHealth,
+        cloudinary: cloudinaryHealth
+      }
+    });
+  } catch (error) {
+    logger.error('Health check error:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed'
+    });
+  }
 });
 
 // API routes
@@ -105,13 +142,27 @@ app.use('*', (req, res) => {
 app.use(errorHandler);
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  
+  // Close service connections
+  await Promise.all([
+    redisService.disconnect(),
+    rabbitMQService.disconnect()
+  ]);
+  
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+  
+  // Close service connections
+  await Promise.all([
+    redisService.disconnect(),
+    rabbitMQService.disconnect()
+  ]);
+  
   process.exit(0);
 });
 
