@@ -35,8 +35,8 @@ router.post('/login', [
 
 // @route   POST /api/auth/logout
 // @desc    Logout user
-// @access  Private
-router.post('/logout', auth, logout);
+// @access  Public
+router.post('/logout', logout);
 
 // @route   POST /api/auth/refresh
 // @desc    Refresh access token

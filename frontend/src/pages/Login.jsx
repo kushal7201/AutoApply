@@ -1,15 +1,23 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { useAuth } from '../contexts/AuthContext'
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
   const { register, handleSubmit, formState: { errors } } = useForm()
+  const { login, loading, error } = useAuth()
+  const navigate = useNavigate()
 
-  const onSubmit = (data) => {
-    console.log('Login data:', data)
-    // Handle login logic here
+  const onSubmit = async (data) => {
+    try {
+      await login(data)
+      navigate('/dashboard')
+    } catch (err) {
+      // Error is handled by the AuthContext
+      console.error('Login failed:', err)
+    }
   }
 
   return (
@@ -27,6 +35,13 @@ const Login = () => {
 
         {/* Form */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+          {/* Display error message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+              {error}
+            </div>
+          )}
+
           <div className="space-y-4">
             {/* Email */}
             <div>
@@ -108,9 +123,10 @@ const Login = () => {
           {/* Submit button */}
           <button
             type="submit"
-            className="btn btn-primary w-full btn-lg"
+            disabled={loading}
+            className="btn btn-primary w-full btn-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sign in
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
 
           {/* Divider */}

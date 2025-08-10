@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { 
   MagnifyingGlassIcon, 
   AdjustmentsHorizontalIcon,
@@ -14,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 const Dashboard = () => {
+  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [isRapidApplyActive, setIsRapidApplyActive] = useState(false)
 
@@ -117,8 +119,20 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">Manage your job applications and track your progress</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome back{user ? `, ${user.name.split(' ')[0]}` : ''}!
+              </h1>
+              <p className="text-gray-600 mt-2">Manage your job applications and track your progress</p>
+            </div>
+            {user && (
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Last login</p>
+                <p className="text-sm font-medium text-gray-900">Today at 2:30 PM</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Stats */}

@@ -227,7 +227,7 @@ export const refresh = async (req, res) => {
 // @access  Private
 export const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const user = req.user; // req.user is already the user object from auth middleware
     if (!user) {
       return res.status(404).json({
         success: false,
