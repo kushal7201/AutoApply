@@ -27,12 +27,6 @@ const Signup = () => {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <Link to="/" className="flex items-center justify-center space-x-2 mb-6">
-            <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">AA</span>
-            </div>
-            <span className="font-bold text-2xl text-gray-900">AutoApply</span>
-          </Link>
           <h2 className="text-3xl font-bold text-gray-900">
             Create your account
           </h2>

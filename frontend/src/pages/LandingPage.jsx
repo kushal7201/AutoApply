@@ -69,9 +69,6 @@ const LandingPage = () => {
             <Link to="/signup" className="btn btn-primary btn-lg">
               Start Applying Now
             </Link>
-            <button className="btn btn-outline btn-lg">
-              Watch Demo
-            </button>
           </div>
         </div>
       </section>
@@ -192,9 +189,6 @@ const LandingPage = () => {
             <Link to="/signup" className="btn bg-white text-primary-600 hover:bg-gray-100 btn-lg">
               Get Started Free
             </Link>
-            <button className="btn border-white text-white hover:bg-primary-700 btn-lg">
-              Schedule Demo
-            </button>
           </div>
         </div>
       </section>
@@ -219,7 +213,6 @@ const LandingPage = () => {
               <h3 className="font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#" className="hover:text-white">Features</a></li>
-                <li><a href="#" className="hover:text-white">Pricing</a></li>
                 <li><a href="#" className="hover:text-white">API</a></li>
               </ul>
             </div>

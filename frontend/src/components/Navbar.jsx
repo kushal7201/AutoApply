@@ -10,15 +10,11 @@ const Navbar = () => {
     { name: 'Profile', path: '/profile', requiresAuth: true },
   ]
 
-  if (isAuth) {
-    return null // Don't show navbar on auth pages
-  }
-
   return (
     <nav className="bg-white border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
+          {/* Logo - Far Left */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
@@ -28,25 +24,7 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Navigation Links */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  className={cn(
-                    'nav-link',
-                    location.pathname === item.path && 'nav-link-active'
-                  )}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Auth Buttons */}
+          {/* Auth Buttons - Far Right */}
           <div className="flex items-center space-x-4">
             {location.pathname === '/' ? (
               <>
@@ -57,10 +35,31 @@ const Navbar = () => {
                   Get Started
                 </Link>
               </>
+            ) : isAuth ? (
+              <Link to="/" className="btn btn-outline btn-sm">
+                Back to Home
+              </Link>
             ) : (
-              <button className="btn btn-outline btn-sm">
-                Logout
-              </button>
+              <>
+                {/* Navigation Links for dashboard pages */}
+                <div className="hidden md:flex items-center space-x-4 mr-4">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.name}
+                      to={item.path}
+                      className={cn(
+                        'nav-link',
+                        location.pathname === item.path && 'nav-link-active'
+                      )}
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+                <button className="btn btn-outline btn-sm">
+                  Logout
+                </button>
+              </>
             )}
           </div>
         </div>
