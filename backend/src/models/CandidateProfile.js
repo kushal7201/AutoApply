@@ -23,8 +23,13 @@ const CandidateProfileSchema = new mongoose.Schema({
     linkedIn: String,
     portfolio: String,
     github: String,
-    website: String
+    website: String,
+    summary: String // Professional summary
   },
+  skills: [{
+    type: String,
+    trim: true
+  }],
   resumes: [{
     filename: {
       type: String,

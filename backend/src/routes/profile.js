@@ -100,7 +100,8 @@ router.get('/', authenticate, async (req, res) => {
           linkedIn: '',
           portfolio: '',
           github: '',
-          website: ''
+          website: '',
+          summary: ''
         },
         skills: [],
         workExperience: [],
@@ -125,7 +126,8 @@ router.get('/', authenticate, async (req, res) => {
         ...profile.personalInfo,
         firstName: user.firstName,
         lastName: user.lastName,
-        email: user.email
+        email: user.email,
+        location: profile.personalInfo.address?.city || '' // Extract city from address object for frontend compatibility
       }
     };
 
@@ -145,11 +147,14 @@ router.get('/', authenticate, async (req, res) => {
 // @access  Private
 router.put('/personal', authenticate, async (req, res) => {
   try {
+    console.log('📝 Update personal info request:', req.body);
+    
     const User = require('../models/User');
     
     let profile = await CandidateProfile.findOne({ userId: req.user.id });
     
     if (!profile) {
+      console.log('❌ Profile not found for user:', req.user.id);
       return res.status(404).json({
         success: false,
         message: 'Profile not found'
@@ -160,6 +165,7 @@ router.put('/personal', authenticate, async (req, res) => {
     const user = await User.findById(req.user.id);
     
     if (!user) {
+      console.log('❌ User not found:', req.user.id);
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -178,23 +184,43 @@ router.put('/personal', authenticate, async (req, res) => {
     // Fields that belong to CandidateProfile model
     if (req.body.phone !== undefined) profileFields.phone = req.body.phone;
     if (req.body.address !== undefined) profileFields.address = req.body.address;
+    if (req.body.location !== undefined) {
+      // Frontend sends 'location' as a string, convert to address object
+      if (typeof req.body.location === 'string') {
+        profileFields.address = {
+          ...profile.personalInfo.address,
+          city: req.body.location // Store location string as city
+        };
+      } else {
+        profileFields.address = req.body.location;
+      }
+    }
     if (req.body.linkedIn !== undefined) profileFields.linkedIn = req.body.linkedIn;
     if (req.body.portfolio !== undefined) profileFields.portfolio = req.body.portfolio;
     if (req.body.github !== undefined) profileFields.github = req.body.github;
     if (req.body.website !== undefined) profileFields.website = req.body.website;
+    if (req.body.summary !== undefined) profileFields.summary = req.body.summary;
+
+    console.log('👤 User fields to update:', userFields);
+    console.log('📋 Profile fields to update:', profileFields);
+    console.log('🔍 Raw request body location:', req.body.location);
+    console.log('🔍 Raw request body address:', req.body.address);
 
     // Update User model if there are user fields
     if (Object.keys(userFields).length > 0) {
-      await User.findByIdAndUpdate(req.user.id, userFields, { new: true });
+      const updatedUser = await User.findByIdAndUpdate(req.user.id, userFields, { new: true });
+      console.log('✅ User updated:', updatedUser);
     }
 
     // Update CandidateProfile model if there are profile fields
     if (Object.keys(profileFields).length > 0) {
       profile.personalInfo = { ...profile.personalInfo, ...profileFields };
+      console.log('📝 Profile personalInfo updated:', profile.personalInfo);
     }
     
     profile.updatedAt = new Date();
     await profile.save();
+    console.log('✅ Profile saved successfully');
 
     // Get updated user data for response
     const updatedUser = await User.findById(req.user.id).select('-password');
@@ -206,10 +232,12 @@ router.put('/personal', authenticate, async (req, res) => {
         ...profile.personalInfo,
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
-        email: updatedUser.email
+        email: updatedUser.email,
+        location: profile.personalInfo.address?.city || '' // Extract city from address object for frontend compatibility
       }
     };
 
+    console.log('✅ Merged profile response prepared');
     res.json({
       success: true,
       message: 'Personal information updated successfully',
@@ -230,19 +258,27 @@ router.put('/personal', authenticate, async (req, res) => {
 // @access  Private
 router.put('/skills', authenticate, async (req, res) => {
   try {
+    console.log('🛠️ Update skills request:', req.body);
+    
     let profile = await CandidateProfile.findOne({ userId: req.user.id });
     
     if (!profile) {
+      console.log('❌ Profile not found for user:', req.user.id);
       return res.status(404).json({
         success: false,
         message: 'Profile not found'
       });
     }
 
+    console.log('📝 Current skills before update:', profile.skills);
+
     profile.skills = req.body.skills || [];
     profile.updatedAt = new Date();
     
+    console.log('📝 New skills to save:', profile.skills);
+    
     await profile.save();
+    console.log('✅ Skills saved successfully');
 
     res.json({
       success: true,
