@@ -71,21 +71,36 @@ const upload = multer({
 // @access  Private
 router.get('/', authenticate, async (req, res) => {
   try {
+    // First get the user data
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
     let profile = await CandidateProfile.findOne({ userId: req.user.id });
 
     if (!profile) {
+      // Create a new profile with only the non-duplicate fields
       profile = new CandidateProfile({
         userId: req.user.id,
         personalInfo: {
-          firstName: req.user.firstName || '',
-          lastName: req.user.lastName || '',
-          email: req.user.email || '',
           phone: '',
-          location: '',
-          website: '',
+          address: {
+            street: '',
+            city: '',
+            state: '',
+            country: '',
+            zipCode: ''
+          },
           linkedIn: '',
+          portfolio: '',
           github: '',
-          summary: ''
+          website: ''
         },
         skills: [],
         workExperience: [],
@@ -103,7 +118,18 @@ router.get('/', authenticate, async (req, res) => {
       await profile.save();
     }
 
-    res.json({ success: true, data: profile });
+    // Merge user data with profile data
+    const mergedProfile = {
+      ...profile.toObject(),
+      personalInfo: {
+        ...profile.personalInfo,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      }
+    };
+
+    res.json({ success: true, data: mergedProfile });
   } catch (error) {
     console.error('Error fetching profile:', error);
     res.status(500).json({
@@ -119,6 +145,8 @@ router.get('/', authenticate, async (req, res) => {
 // @access  Private
 router.put('/personal', authenticate, async (req, res) => {
   try {
+    const User = require('../models/User');
+    
     let profile = await CandidateProfile.findOne({ userId: req.user.id });
     
     if (!profile) {
@@ -128,16 +156,64 @@ router.put('/personal', authenticate, async (req, res) => {
       });
     }
 
-    // Update personal info
-    profile.personalInfo = { ...profile.personalInfo, ...req.body };
-    profile.updatedAt = new Date();
+    // Get user data
+    const user = await User.findById(req.user.id);
     
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Separate the fields that belong to User model vs CandidateProfile model
+    const userFields = {};
+    const profileFields = {};
+    
+    // Fields that belong to User model
+    if (req.body.firstName !== undefined) userFields.firstName = req.body.firstName;
+    if (req.body.lastName !== undefined) userFields.lastName = req.body.lastName;
+    if (req.body.email !== undefined) userFields.email = req.body.email;
+    
+    // Fields that belong to CandidateProfile model
+    if (req.body.phone !== undefined) profileFields.phone = req.body.phone;
+    if (req.body.address !== undefined) profileFields.address = req.body.address;
+    if (req.body.linkedIn !== undefined) profileFields.linkedIn = req.body.linkedIn;
+    if (req.body.portfolio !== undefined) profileFields.portfolio = req.body.portfolio;
+    if (req.body.github !== undefined) profileFields.github = req.body.github;
+    if (req.body.website !== undefined) profileFields.website = req.body.website;
+
+    // Update User model if there are user fields
+    if (Object.keys(userFields).length > 0) {
+      await User.findByIdAndUpdate(req.user.id, userFields, { new: true });
+    }
+
+    // Update CandidateProfile model if there are profile fields
+    if (Object.keys(profileFields).length > 0) {
+      profile.personalInfo = { ...profile.personalInfo, ...profileFields };
+    }
+    
+    profile.updatedAt = new Date();
     await profile.save();
+
+    // Get updated user data for response
+    const updatedUser = await User.findById(req.user.id).select('-password');
+    
+    // Merge response data
+    const mergedProfile = {
+      ...profile.toObject(),
+      personalInfo: {
+        ...profile.personalInfo,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email
+      }
+    };
 
     res.json({
       success: true,
       message: 'Personal information updated successfully',
-      data: profile
+      data: mergedProfile
     });
   } catch (error) {
     console.error('Error updating personal info:', error);
@@ -886,11 +962,21 @@ router.get('/completion', authenticate, async (req, res) => {
       });
     }
 
+    // Get user data for completion calculation
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id).select('-password');
+    
     // Calculate completion percentages
-    const personalInfoFields = ['firstName', 'lastName', 'email', 'phone', 'location', 'summary'];
-    const personalInfoCompleted = personalInfoFields.filter(field => 
-      profile.personalInfo[field] && profile.personalInfo[field].trim() !== ''
-    ).length;
+    const personalInfoFields = ['firstName', 'lastName', 'email', 'phone'];
+    const personalInfoCompleted = personalInfoFields.filter(field => {
+      if (field === 'firstName' || field === 'lastName' || field === 'email') {
+        // These come from User model
+        return user[field] && user[field].trim() !== '';
+      } else {
+        // These come from CandidateProfile model
+        return profile.personalInfo[field] && profile.personalInfo[field].trim() !== '';
+      }
+    }).length;
     const personalInfoPercent = (personalInfoCompleted / personalInfoFields.length) * 100;
 
     const skillsPercent = profile.skills.length > 0 ? 100 : 0;

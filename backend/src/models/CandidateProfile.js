@@ -8,21 +8,7 @@ const CandidateProfileSchema = new mongoose.Schema({
     unique: true
   },
   personalInfo: {
-    firstName: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    lastName: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    email: {
-      type: String,
-      required: true,
-      lowercase: true
-    },
+    // Remove duplicate fields - firstName, lastName, email are in User model
     phone: {
       type: String,
       trim: true
