@@ -235,17 +235,18 @@ router.post('/resume/upload', authenticate, upload.single('resume'), async (req,
     }
 
     try {
-      // Get file extension to include in public_id
+      // Get file extension
       const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
       
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: 'autoapply/resumes',
         resource_type: 'raw',
-        public_id: `${req.user.id}-${Date.now()}-${req.body.name || 'resume'}.${fileExtension}`,
+        public_id: `${req.user.id}-${Date.now()}-${req.body.name || 'resume'}`,
         use_filename: false,
         unique_filename: true
       });
 
+      // Use the secure_url directly - this should work for downloads
       cloudinaryUrl = result.secure_url;
       cloudinaryPublicId = result.public_id;
 
@@ -443,14 +444,83 @@ router.get('/resume/:id/download', async (req, res) => {
       cloudinaryPublicId: resume.cloudinaryPublicId
     });
 
-    // All files should be on Cloudinary, redirect to the URL
+    // For untrusted Cloudinary accounts, we need a workaround
     if (resume.cloudinaryUrl && resume.cloudinaryUrl.startsWith('http')) {
-      console.log('Redirecting to Cloudinary URL:', resume.cloudinaryUrl);
+      console.log('Attempting to serve file for untrusted account');
       
-      // For raw files like PDFs, Cloudinary serves them correctly with .pdf extension
-      // The issue might be the frontend trying to load it as an image
-      // Let's add proper headers and redirect
-      return res.redirect(resume.cloudinaryUrl);
+      // For untrusted accounts, the best approach is to:
+      // 1. Download the file ourselves from Cloudinary (this usually works)
+      // 2. Stream it to the user with proper headers
+      
+      try {
+        const axios = require('axios');
+        
+        // Try to fetch the file from the original Cloudinary URL
+        const response = await axios({
+          method: 'GET',
+          url: resume.cloudinaryUrl,
+          responseType: 'stream',
+          timeout: 30000 // 30 second timeout
+        });
+        
+        // Set proper headers for the file
+        res.setHeader('Content-Type', resume.fileType === 'pdf' ? 'application/pdf' : 'application/octet-stream');
+        res.setHeader('Content-Disposition', `inline; filename="${resume.filename}"`);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+        
+        // Pipe the response
+        response.data.pipe(res);
+        console.log('Successfully streaming file from Cloudinary');
+        return;
+        
+      } catch (fetchError) {
+        console.error('Error fetching from Cloudinary:', fetchError.message);
+        
+        // If direct access fails, try with authentication
+        if (fetchError.response?.status === 403 || fetchError.response?.status === 401) {
+          return res.status(403).json({
+            success: false,
+            message: 'File access restricted. Please contact support to verify your Cloudinary account.',
+            hint: 'This is likely due to Cloudinary account restrictions for new/free accounts.'
+          });
+        }
+        
+        return res.status(500).json({
+          success: false,
+          message: 'Unable to access file from cloud storage'
+        });
+      }
+    }
+    
+    // If we have a cloudinaryPublicId but no URL, try to generate the basic URL
+    if (resume.cloudinaryPublicId && cloudinary) {
+      console.log('Generating basic Cloudinary URL for public ID:', resume.cloudinaryPublicId);
+      
+      try {
+        // Generate a basic raw file URL without transformations
+        const basicUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${resume.cloudinaryPublicId}`;
+        console.log('Generated basic URL:', basicUrl);
+        
+        // Try to fetch and stream this URL
+        const axios = require('axios');
+        const response = await axios({
+          method: 'GET',
+          url: basicUrl,
+          responseType: 'stream',
+          timeout: 30000
+        });
+        
+        res.setHeader('Content-Type', resume.fileType === 'pdf' ? 'application/pdf' : 'application/octet-stream');
+        res.setHeader('Content-Disposition', `inline; filename="${resume.filename}"`);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        response.data.pipe(res);
+        return;
+        
+      } catch (urlError) {
+        console.error('Error with basic Cloudinary URL:', urlError.message);
+      }
     }
     
     // If somehow a file doesn't have a proper Cloudinary URL, return error

@@ -37,6 +37,7 @@ const ProfilePage = () => {
   const [newSkill, setNewSkill] = useState('')
   const [editingExperience, setEditingExperience] = useState(null)
   const [editingEducation, setEditingEducation] = useState(null)
+  const [downloadingResume, setDownloadingResume] = useState(null)
 
   // Fetch profile data
   const { data: profile, isLoading: profileLoading, error: profileError } = useProfile()
@@ -177,11 +178,14 @@ const ProfilePage = () => {
 
   const handleDownloadResume = async (resumeId) => {
     try {
+      setDownloadingResume(resumeId)
       await profileService.downloadResume(resumeId)
       // Don't show success toast since download happens automatically
     } catch (error) {
       console.error('Download error:', error)
       toast.error(error.message || 'Failed to download resume')
+    } finally {
+      setDownloadingResume(null)
     }
   }
 
@@ -478,20 +482,36 @@ const ProfilePage = () => {
                 className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                   isDragActive
                     ? 'border-primary-400 bg-primary-50'
+                    : uploadResumeMutation.isPending
+                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
                     : 'border-gray-300 hover:border-primary-400'
                 }`}
               >
-                <input {...getInputProps()} />
-                <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-lg font-medium text-gray-900 mb-2">
-                  {isDragActive ? 'Drop your resume here' : 'Upload a new resume'}
-                </p>
-                <p className="text-gray-600">
-                  Drag and drop your resume, or click to browse
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Supported formats: PDF, DOC, DOCX
-                </p>
+                <input {...getInputProps()} disabled={uploadResumeMutation.isPending} />
+                {uploadResumeMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                    <p className="text-lg font-medium text-gray-900 mb-2">
+                      Uploading resume...
+                    </p>
+                    <p className="text-gray-600">
+                      Please wait while we upload your file to the cloud
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-gray-900 mb-2">
+                      {isDragActive ? 'Drop your resume here' : 'Upload a new resume'}
+                    </p>
+                    <p className="text-gray-600">
+                      Drag and drop your resume, or click to browse
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Supported formats: PDF, DOC, DOCX
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Existing Resumes */}
@@ -507,15 +527,25 @@ const ProfilePage = () => {
                       resumes.map((resume) => (
                         <div
                           key={resume._id}
-                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleDownloadResume(resume._id)}
+                          className={`flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer ${
+                            downloadingResume === resume._id ? 'opacity-75 cursor-wait' : ''
+                          }`}
+                          onClick={() => downloadingResume === resume._id ? null : handleDownloadResume(resume._id)}
                         >
                           <div className="flex items-center space-x-3">
-                            <DocumentTextIcon className="h-8 w-8 text-gray-400" />
+                            {downloadingResume === resume._id ? (
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                            ) : (
+                              <DocumentTextIcon className="h-8 w-8 text-gray-400" />
+                            )}
                             <div>
                               <p className="font-medium text-gray-900">{resume.filename || resume.name}</p>
                               <p className="text-sm text-gray-500">
-                                Uploaded on {resume.uploadDate ? new Date(resume.uploadDate).toLocaleDateString() : 'Unknown'}
+                                {downloadingResume === resume._id ? (
+                                  'Preparing download...'
+                                ) : (
+                                  `Uploaded on ${resume.uploadDate ? new Date(resume.uploadDate).toLocaleDateString() : 'Unknown'}`
+                                )}
                               </p>
                             </div>
                             {resume.isDefault && (
