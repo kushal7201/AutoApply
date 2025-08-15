@@ -303,8 +303,7 @@ CandidateProfileSchema.pre('save', function(next) {
   next();
 });
 
-// Indexes
-CandidateProfileSchema.index({ userId: 1 });
+// Indexes (userId already has unique index from schema)
 CandidateProfileSchema.index({ 'personalInfo.email': 1 });
 CandidateProfileSchema.index({ 'profileCompletion.overall': -1 });
 

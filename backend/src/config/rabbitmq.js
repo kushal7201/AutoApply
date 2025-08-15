@@ -17,17 +17,45 @@ const connectRabbitMQ = async () => {
 
     logger.info('✅ RabbitMQ Connected Successfully');
 
-    // Create queues
+    // Create queues with proper error handling
     const queueName = process.env.RABBITMQ_QUEUE_NAME || 'autoapply_tasks';
-    await channel.assertQueue(queueName, {
-      durable: true, // Queue survives broker restarts
-    });
+    
+    try {
+      // First try to check if queue exists
+      await channel.checkQueue(queueName);
+      logger.info(`Using existing queue: ${queueName}`);
+    } catch (error) {
+      // Queue doesn't exist, create it with TTL to match CloudAMQP default
+      try {
+        await channel.assertQueue(queueName, {
+          durable: true, // Queue survives broker restarts
+          messageTtl: 86400000, // 24 hours TTL to match existing queue
+        });
+        logger.info(`Created new queue: ${queueName}`);
+      } catch (assertError) {
+        logger.error(`Failed to create queue ${queueName}:`, assertError);
+        throw assertError;
+      }
+    }
 
     // Create dead letter queue for failed jobs
     const dlqName = `${queueName}_dlq`;
-    await channel.assertQueue(dlqName, {
-      durable: true,
-    });
+    try {
+      // First try to check if DLQ exists
+      await channel.checkQueue(dlqName);
+      logger.info(`Using existing dead letter queue: ${dlqName}`);
+    } catch (error) {
+      // DLQ doesn't exist, create it
+      try {
+        await channel.assertQueue(dlqName, {
+          durable: true,
+          messageTtl: 86400000, // 24 hours TTL
+        });
+        logger.info(`Created new dead letter queue: ${dlqName}`);
+      } catch (assertError) {
+        logger.warn(`Could not create dead letter queue: ${assertError.message}`);
+      }
+    }
 
     logger.info(`📋 Queues created: ${queueName}, ${dlqName}`);
 

@@ -207,8 +207,7 @@ UserSchema.methods.incrementApplicationCount = function(successful = false) {
   }
 };
 
-// Index for email lookup
-UserSchema.index({ email: 1 });
+// Indexes for performance (email already has unique index from schema)
 UserSchema.index({ isActive: 1 });
 UserSchema.index({ 'subscription.plan': 1 });
 

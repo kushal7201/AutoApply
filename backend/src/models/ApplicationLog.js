@@ -404,9 +404,8 @@ ApplicationLogSchema.statics.getSuccessRate = function(userId, days = 30) {
   ]);
 };
 
-// Indexes
+// Indexes (userId, jobId, status already have individual indexes from schema)
 ApplicationLogSchema.index({ userId: 1, status: 1 });
-ApplicationLogSchema.index({ jobId: 1 });
 ApplicationLogSchema.index({ status: 1, createdAt: -1 });
 ApplicationLogSchema.index({ 'humanInteraction.required': 1, 'humanInteraction.timeoutAt': 1 });
 ApplicationLogSchema.index({ 'workerInfo.workerId': 1 });
