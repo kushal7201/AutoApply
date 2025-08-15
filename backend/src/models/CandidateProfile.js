@@ -62,6 +62,14 @@ const CandidateProfileSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     },
+    isDefault: {
+      type: Boolean,
+      default: false
+    },
+    uploadDate: {
+      type: Date,
+      default: Date.now
+    },
     parsedData: {
       summary: String,
       skills: [String],

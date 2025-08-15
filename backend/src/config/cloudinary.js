@@ -11,13 +11,23 @@ cloudinary.config({
 // Test connection
 const testConnection = async () => {
   try {
+    // Verify credentials are present
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.warn('❌ Cloudinary credentials missing in environment variables');
+      return false;
+    }
+
     const result = await cloudinary.api.ping();
     if (result.status === 'ok') {
-      logger.info('☁️  Cloudinary Connected Successfully');
+      console.log('☁️  Cloudinary Connected Successfully');
       return true;
     }
+    return false;
   } catch (error) {
-    logger.error('❌ Cloudinary connection error:', error);
+    console.warn('❌ Cloudinary connection error:', error.message);
+    if (error.error && error.error.message) {
+      console.warn('❌ Cloudinary error details:', error.error.message);
+    }
     return false;
   }
 };
@@ -150,9 +160,6 @@ const generateSignedUploadUrl = (options = {}) => {
     };
   }
 };
-
-// Initialize Cloudinary connection test
-testConnection();
 
 module.exports = {
   cloudinary,
